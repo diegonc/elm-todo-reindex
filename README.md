@@ -111,3 +111,16 @@ GraphQL schema obtained by instrospection of a live server.
 >
 >    Make sure you checkout the `t/add-option-for-http-method`
 >    branch.
+
+## 5. Writing the GraphQL queries we'll use
+
+`elm-graphql` requires the queries our application
+will use to be written before any Elm code is generated.
+
+> **Note:**
+>
+>    The [How elm graphql works](https://github.com/jahewson/elm-graphql/wiki/How-elm-graphql-works) wiki page has
+>    more details about why it is that way.
+
+We will use the query shown previously in section `3` and
+save it in `app/src/GraphQL/TodoMVC.graphql`.

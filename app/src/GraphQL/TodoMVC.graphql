@@ -1,0 +1,11 @@
+query allTodos {
+  viewer {
+    allTodos {
+      nodes {
+        id,
+        text,
+        complete
+      }
+    }
+  }
+}
