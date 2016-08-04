@@ -4,3 +4,8 @@
 
     $ reindex login <URL> <token>
     $ reindex schema-fetch reindex/ReindexSchema.json5
+
+## 2. Creating the Elm project
+
+    $ cd app
+    $ elm package install
