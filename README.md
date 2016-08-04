@@ -86,3 +86,28 @@ and a Todo object may be created with the following mutation:
         }
       }
     }
+
+## 4. Setting up `elm-graphql`
+
+> elm-graphql aims to generate Elm code for making GraphQL queries in a type-safe manner.
+
+`elm-graphql` generates the Elm types corresponding to a
+GraphQL schema obtained by instrospection of a live server.
+
+    $ cd tools
+    $ git clone https://github.com/jahewson/elm-graphql.git
+    $ cd elm-graphql/tool
+    $ npm install
+
+> **Important Note**
+>
+>    While the repository used above is the one true source
+>    of the `elm-graphql` package, I had to make some changes
+>    for it to work with Reindex.
+>
+>    I hope those changes will eventually be merged by @jahewson
+>    But in the meanwhile, you can use my fork located at:
+>        https://github.com/diegonc/elm-graphql.git
+>
+>    Make sure you checkout the `t/add-option-for-http-method`
+>    branch.
