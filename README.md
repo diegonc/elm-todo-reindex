@@ -158,3 +158,18 @@ directory to `app/src` and install the `evancz/elm-http` package.
 >    The last couple of steps should not be necessary anymore
 >    when the conflicting types problem is solved and the
 >    package finally published.
+
+## 7. Writing a quick test of the generated module
+
+We are going to write a quick and dirty test for the module generated
+in the previous step.
+
+But first, launch graphiql and add some todo items using the mutation
+showed in section *3*.
+
+    $ reindex graphiql
+
+Now that our backend has some data we can query it using the `allTodos`
+task exposed by the `GraphQL.TodoMVC` module.
+
+Check the `app/src/Main.elm` file for the implementation.
