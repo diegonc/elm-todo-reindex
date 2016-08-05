@@ -124,3 +124,37 @@ will use to be written before any Elm code is generated.
 
 We will use the query shown previously in section `3` and
 save it in `app/src/GraphQL/TodoMVC.graphql`.
+
+## 6. Running `elm-graphql` code generator
+
+With the tool installed, we now need to run it against
+Reindex's GraphQL server and the queries file generated
+in the previous section.
+
+    $ cd app
+    $ ../tools/elm-graphql/tool/bin/make src/GraphQL/TodoMVC.graphql <URL>/graphql --method=POST
+
+> **Note:**
+>
+>        make is a bash script that calls node
+>        When running on Windows just invoke it
+>        by hand replacing the make command with
+>
+>        node ../tools/elm-graphql/tool/lib/query-to-elm.js
+
+Now we have to patch the generated file `app/src/GraphQL/TodoMVC.elm`.
+The schema extracted form Reindex URL contains two types that cause
+some trouble to elm graphql code generator due to enums with the same
+value.
+
+Just add a quote at the end of the `Error` tag in `ReindexLogEventType`
+and to its reference in `reindexlogeventtype`.
+
+We also have to copy the `GraphQL.elm` file from our `tools/elm-graphql/src`
+directory to `app/src` and install the `evancz/elm-http` package.
+
+> **Note:**
+>
+>    The last couple of steps should not be necessary anymore
+>    when the conflicting types problem is solved and the
+>    package finally published.
