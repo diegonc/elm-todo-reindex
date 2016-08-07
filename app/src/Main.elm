@@ -2,6 +2,7 @@ module Main exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (..)
 import Html.App as App
 import Http
 import Task
@@ -62,6 +63,7 @@ filterTodos filter all =
 type Msg
     = InitialFetchResult AllTodosResult
     | InitialFetchError Http.Error
+    | ChooseFilter Filter
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -81,6 +83,9 @@ update msg model =
               }
             , Cmd.none
             )
+
+        ChooseFilter filter ->
+            ( { model | filter = filter }, Cmd.none )
 
 
 
@@ -124,6 +129,7 @@ renderTodoList : Model -> Html Msg
 renderTodoList model =
     section [ class "todo-list" ]
         [ model.todos
+            |> filterTodos model.filter
             |> List.map renderTodoItem
             |> ul []
         ]
@@ -179,7 +185,10 @@ renderFilter active current =
         makeList b =
             [ ( "active", b ) ]
     in
-        li [ classList <| makeList <| active == current ]
+        li
+            [ classList <| makeList <| active == current
+            , onClick (ChooseFilter current)
+            ]
             [ a [] [ text <| toString current ] ]
 
 

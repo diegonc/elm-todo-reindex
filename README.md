@@ -213,3 +213,19 @@ fetch.
 >    `Elm For Beginners` tutorial.
 >
 >    http://courses.knowthen.com/courses/elm-for-beginners/lectures/1254148
+
+## 9. Implementing filtering behavior
+
+The last thing we can progress with before diving into GraphQL mutations
+is the filtering of the todo list.
+
+Section 8 introduced the function `filterTodos` which will be very useful
+for doing just that.
+
+```elm
+filterTodos : Filter -> List TodoItem -> List TodoItem
+```
+
+The filter selection buttons will generate a new message type with the
+chosen filter selected, named `ChooseFilter`, while the todo list view
+must use the currently selected filter to compute the shown items.
