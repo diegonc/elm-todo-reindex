@@ -173,3 +173,43 @@ Now that our backend has some data we can query it using the `allTodos`
 task exposed by the `GraphQL.TodoMVC` module.
 
 Check the `app/src/Main.elm` file for the implementation.
+
+## 8. A barebones view
+
+A lot of work has been done in the backend side of the project and
+now there's enough infrastructure to make some progress on the frontend.
+
+The UI is composed of the following components which will be
+implemented by separate functions or variables.
+
+    * View root
+        * Header
+        * Todo input
+        * Todo item list
+            * Todo item
+        * Footer
+            * Active item count
+            * Filters
+            * Clear completed
+
+The model contains an array of todo items fetched from the server, an
+optional error message received from the server, the filtering status
+and the contents of the input field.
+
+Finally, for the time being, the application can receive the following
+messages:
+
+* InitialFetchResult AllTodosResult : when the initial fetch completes
+successfully.
+* InitialFetchError Http.Error : when the initial fetch fails
+
+We will not bother to poll the server for new items after the initial
+fetch.
+
+> **Note:**
+>
+>    A Gulp based build prcess is introduced in this section
+>    which is based on what James Moore used in his
+>    `Elm For Beginners` tutorial.
+>
+>    http://courses.knowthen.com/courses/elm-for-beginners/lectures/1254148
