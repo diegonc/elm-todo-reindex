@@ -9,3 +9,13 @@ query allTodos {
     }
   }
 }
+
+mutation AddTodo($text: String!) {
+  createTodo(input: {text: $text, complete: false}) {
+    changedTodo {
+      id
+      text
+      complete
+    }
+  }
+}

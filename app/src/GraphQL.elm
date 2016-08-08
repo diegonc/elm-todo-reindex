@@ -20,71 +20,73 @@ type alias ID =
 
 {-| Todo: document this function.
 -}
-query : String -> String -> String -> String -> String -> Decoder a -> Task Http.Error a
+query : String -> String -> String -> String -> Json.Encode.Value -> Decoder a -> Task Http.Error a
 query method url query operation variables decoder =
     fetch method url query operation variables decoder
 
 
 {-| Todo: document this function.
 -}
-mutation : String -> String -> String -> String -> Decoder a -> Task Http.Error a
+mutation : String -> String -> String -> Json.Encode.Value -> Decoder a -> Task Http.Error a
 mutation url query operation variables decoder =
     fetch "POST" url query operation variables decoder
 
 
 {-| Todo: document this function.
 -}
-fetch : String -> String -> String -> String -> String -> Decoder a -> Task Http.Error a
+fetch : String -> String -> String -> String -> Json.Encode.Value -> Decoder a -> Task Http.Error a
 fetch verb url query operation variables decoder =
+    let
+        request =
+            (case verb of
+                "GET" ->
+                    buildRequestWithURLParams verb url query operation variables
+
+                _ ->
+                    buildRequestWithBody verb url query operation variables
+            )
+    in
+        Http.fromJson (queryResult decoder) (Http.send Http.defaultSettings request)
+
+
+{-| Todo: document this function.
+-}
+buildRequestWithURLParams : String -> String -> String -> String -> Json.Encode.Value -> Http.Request
+buildRequestWithURLParams verb url query operation variables =
     let
         params =
             [ ( "query", query )
             , ( "operationName", operation )
-            , ( "variables", variables )
+            , ( "variables", (Json.Encode.encode 0 variables) )
             ]
-
-        body =
-            case verb of
-                "GET" ->
-                    Http.empty
-
-                _ ->
-                    params
-                        |> List.map
-                            (\p ->
-                                case p of
-                                    ( name, value ) ->
-                                        ( name, Json.Encode.string value )
-                            )
-                        |> Json.Encode.object
-                        |> Json.Encode.encode 0
-                        |> Http.string
-
-        url =
-            case verb of
-                "GET" ->
-                    Http.url url params
-
-                _ ->
-                    Http.url url []
-
-        payloadHeaders =
-            case verb of
-                "GET" ->
-                    []
-
-                _ ->
-                    [ ( "Content-Type", "application/json" ) ]
-
-        request =
-            { verb = verb
-            , headers =
-                ( "Accept", "application/json" ) :: payloadHeaders
-            , url = url
-            , body = body
-            }
     in
-        Http.fromJson (queryResult decoder) (Http.send Http.defaultSettings request)
+        { verb = verb
+        , headers = [ ( "Accept", "application/json" ) ]
+        , url = Http.url url params
+        , body = Http.empty
+        }
+
+
+{-| Todo: document this function.
+-}
+buildRequestWithBody : String -> String -> String -> String -> Json.Encode.Value -> Http.Request
+buildRequestWithBody verb url query operation variables =
+    let
+        params =
+            Json.Encode.object
+                [ ( "query", Json.Encode.string query )
+                , ( "operationName", Json.Encode.string operation )
+                , ( "variables", variables )
+                ]
+    in
+        { verb = verb
+        , headers =
+            [ ( "Accept", "application/json" )
+            , ( "Content-Type", "application/json" )
+            ]
+        , url = Http.url url []
+        , body = Http.string <| Json.Encode.encode 0 params
+        }
 
 
 {-| Todo: document this function.

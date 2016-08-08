@@ -3,7 +3,7 @@
 -}
 
 
-module GraphQL.TodoMVC exposing (allTodos, AllTodosResult, ReindexGranteeType, ReindexOrder, ReindexTriggerType, ReindexLogEventType, ReindexLogLevel, ReindexProviderType)
+module GraphQL.TodoMVC exposing (allTodos, AllTodosResult, addTodo, AddTodoResult, ReindexGranteeType, ReindexOrder, ReindexTriggerType, ReindexLogEventType, ReindexLogLevel, ReindexProviderType)
 
 import Task exposing (Task)
 import Json.Decode exposing (..)
@@ -78,7 +78,7 @@ allTodos =
                 Json.Encode.object
                     []
         in
-            GraphQL.query "POST" endpointUrl graphQLQuery "allTodos" (encode 0 graphQLParams) allTodosResult
+            GraphQL.query "POST" endpointUrl graphQLQuery "allTodos" graphQLParams allTodosResult
 
 
 allTodosResult : Decoder AllTodosResult
@@ -96,6 +96,50 @@ allTodosResult =
                                             )
                                        )
                                 )
+                           )
+                    )
+               )
+        )
+
+
+type alias AddTodoResult =
+    { createTodo :
+        { changedTodo :
+            { id : String
+            , text : String
+            , complete : Bool
+            }
+        }
+    }
+
+
+addTodo :
+    { text : String
+    }
+    -> Task Http.Error AddTodoResult
+addTodo params =
+    let
+        graphQLQuery =
+            """mutation AddTodo($text: String!) { createTodo(input: {text: $text, complete: false}) { changedTodo { id text complete } } }"""
+    in
+        let
+            graphQLParams =
+                Json.Encode.object
+                    [ ( "text", Json.Encode.string params.text )
+                    ]
+        in
+            GraphQL.mutation endpointUrl graphQLQuery "AddTodo" graphQLParams addTodoResult
+
+
+addTodoResult : Decoder AddTodoResult
+addTodoResult =
+    map AddTodoResult
+        ("createTodo"
+            := (map (\changedTodo -> { changedTodo = changedTodo })
+                    ("changedTodo"
+                        := (map (\id text complete -> { id = id, text = text, complete = complete }) ("id" := string)
+                                `apply` ("text" := string)
+                                `apply` ("complete" := bool)
                            )
                     )
                )

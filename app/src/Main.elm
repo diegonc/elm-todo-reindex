@@ -5,8 +5,15 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.App as App
 import Http
+import String
 import Task
-import GraphQL.TodoMVC exposing (allTodos, AllTodosResult)
+import GraphQL.TodoMVC
+    exposing
+        ( allTodos
+        , AllTodosResult
+        , addTodo
+        , AddTodoResult
+        )
 
 
 -- Model
@@ -30,6 +37,7 @@ type alias Model =
     , error : Maybe Http.Error
     , filter : Filter
     , input : String
+    , ongoingRequest : Bool
     }
 
 
@@ -40,7 +48,7 @@ initialFetch =
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model [] Nothing All "", initialFetch )
+    ( Model [] Nothing All "" True, initialFetch )
 
 
 filterTodos : Filter -> List TodoItem -> List TodoItem
@@ -64,6 +72,10 @@ type Msg
     = InitialFetchResult AllTodosResult
     | InitialFetchError Http.Error
     | ChooseFilter Filter
+    | Input String
+    | RequestTodoCreation
+    | OnTodoCreated AddTodoResult
+    | OnTodoCreationFailure Http.Error
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -73,6 +85,7 @@ update msg model =
             ( { model
                 | error = Nothing
                 , todos = r.viewer.allTodos.nodes
+                , ongoingRequest = False
               }
             , Cmd.none
             )
@@ -80,12 +93,49 @@ update msg model =
         InitialFetchError e ->
             ( { model
                 | error = Just e
+                , ongoingRequest = False
               }
             , Cmd.none
             )
 
         ChooseFilter filter ->
             ( { model | filter = filter }, Cmd.none )
+
+        Input text ->
+            ( { model | input = text }, Cmd.none )
+
+        RequestTodoCreation ->
+            if model.ongoingRequest || (String.isEmpty model.input) then
+                ( model, Cmd.none )
+            else
+                ( { model | ongoingRequest = True }
+                , createTodoCmd model.input
+                )
+
+        OnTodoCreated r ->
+            ( { model
+                | ongoingRequest = False
+                , error = Nothing
+                , input = ""
+                , todos = List.append model.todos [ r.createTodo.changedTodo ]
+              }
+            , Cmd.none
+            )
+
+        OnTodoCreationFailure err ->
+            ( { model
+                | ongoingRequest = False
+                , error = Just err
+              }
+            , Cmd.none
+            )
+
+
+createTodoCmd : String -> Cmd Msg
+createTodoCmd text =
+    { text = text }
+        |> addTodo
+        |> Task.perform OnTodoCreationFailure OnTodoCreated
 
 
 
@@ -115,13 +165,18 @@ renderHeader =
 renderInputSection : Model -> Html Msg
 renderInputSection model =
     section [ class "input" ]
-        [ input [ type' "checkbox", class "check" ] []
-        , input
-            [ type' "text"
-            , class "text"
-            , placeholder "What needs to be done?"
+        [ Html.form
+            [ onSubmit RequestTodoCreation ]
+            [ input [ type' "checkbox", class "check" ] []
+            , input
+                [ type' "text"
+                , class "text"
+                , placeholder "What needs to be done?"
+                , value model.input
+                , onInput Input
+                ]
+                []
             ]
-            []
         ]
 
 

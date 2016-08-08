@@ -229,3 +229,37 @@ filterTodos : Filter -> List TodoItem -> List TodoItem
 The filter selection buttons will generate a new message type with the
 chosen filter selected, named `ChooseFilter`, while the todo list view
 must use the currently selected filter to compute the shown items.
+
+## 10. Implementing todos creation
+
+Using the mutation shown in section `3` as a building block we are going
+to implement the creation of new todo items. The queries file created in
+section `5` needs to be updated with the new mutation which will have one
+parameter for specifying the item's text.
+
+```
+mutation AddTodo($text: String!) {
+  createTodo(input: {text: $text, complete: false}) {
+    changedTodo {
+      id
+      text
+      complete
+    }
+  }
+}
+```
+
+The code generator then needs to be invoked again; remember to fix the
+conflicting types this time too.
+
+Four new messages will be created to implement this feature.
+
+* Input String: to receive new texts entered by the user
+* RequestTodoCreation: to initiate the GraphQL mutation
+* OnTodoCreated AddTodoResult: to receive the result of the mutation
+* OnTodoCreationFailure Http.Error: for handling server errors
+
+Whenever a user presses the `Enter` key a `RequestTodoCreation` messages
+is delivered, which initiates a roundtrip to the server, and the UI is
+disabled until either the result or error comes back. To simplify things,
+optimistic updates will not be performed.
