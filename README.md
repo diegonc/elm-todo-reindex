@@ -263,3 +263,34 @@ Whenever a user presses the `Enter` key a `RequestTodoCreation` messages
 is delivered, which initiates a roundtrip to the server, and the UI is
 disabled until either the result or error comes back. To simplify things,
 optimistic updates will not be performed.
+
+## 11. Marking a todo as completed/active
+
+A new mutation needs to be added to the queries file to allow the application
+to toggle the completeness of a todo item. We'll use the `updateTodo` mutation
+provided by Reindex.
+
+```
+mutation MarkTodo($id: ID!, $completed: Boolean!) {
+  updateTodo(input: {id: $id, complete: $completed}) {
+    changedTodo {
+      id
+      text
+      complete
+    }
+  }
+}
+```
+
+The code generator then needs to be invoked again; remember to fix the
+conflicting types this time too.
+
+Three new messages will be created to implement this feature.
+
+* RequestToggle TodoItem: to initiate the GraphQL mutation
+* OnToggled MarkTodoResult: to receive the result of the mutation
+* OnToggleFailure Http.Error: for handling server errors
+
+Whenever a user changes the state of the check boxes a
+`RequestToggle` messages is delivered, which initiates a roundtrip to the
+server, and the UI is disabled until either the result or error comes back.

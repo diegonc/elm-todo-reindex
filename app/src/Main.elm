@@ -13,6 +13,8 @@ import GraphQL.TodoMVC
         , AllTodosResult
         , addTodo
         , AddTodoResult
+        , markTodo
+        , MarkTodoResult
         )
 
 
@@ -32,12 +34,19 @@ type Filter
     | All
 
 
+type OngoingRequestReason
+    = Idle
+    | InitialFetch
+    | AppAction
+    | ItemAction TodoItem
+
+
 type alias Model =
     { todos : List TodoItem
     , error : Maybe Http.Error
     , filter : Filter
     , input : String
-    , ongoingRequest : Bool
+    , ongoingRequest : OngoingRequestReason
     }
 
 
@@ -48,7 +57,7 @@ initialFetch =
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model [] Nothing All "" True, initialFetch )
+    ( Model [] Nothing All "" InitialFetch, initialFetch )
 
 
 filterTodos : Filter -> List TodoItem -> List TodoItem
@@ -64,6 +73,18 @@ filterTodos filter all =
             all
 
 
+markOneTodo : String -> Bool -> List TodoItem -> List TodoItem
+markOneTodo id complete todos =
+    let
+        mark item =
+            if item.id == id then
+                { item | complete = complete }
+            else
+                item
+    in
+        List.map mark todos
+
+
 
 -- Update
 
@@ -76,6 +97,9 @@ type Msg
     | RequestTodoCreation
     | OnTodoCreated AddTodoResult
     | OnTodoCreationFailure Http.Error
+    | RequestToggle TodoItem
+    | OnToggled MarkTodoResult
+    | OnToggleFailure Http.Error
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -85,7 +109,7 @@ update msg model =
             ( { model
                 | error = Nothing
                 , todos = r.viewer.allTodos.nodes
-                , ongoingRequest = False
+                , ongoingRequest = Idle
               }
             , Cmd.none
             )
@@ -93,7 +117,7 @@ update msg model =
         InitialFetchError e ->
             ( { model
                 | error = Just e
-                , ongoingRequest = False
+                , ongoingRequest = Idle
               }
             , Cmd.none
             )
@@ -105,16 +129,16 @@ update msg model =
             ( { model | input = text }, Cmd.none )
 
         RequestTodoCreation ->
-            if model.ongoingRequest || (String.isEmpty model.input) then
+            if model.ongoingRequest /= Idle || (String.isEmpty model.input) then
                 ( model, Cmd.none )
             else
-                ( { model | ongoingRequest = True }
+                ( { model | ongoingRequest = AppAction }
                 , createTodoCmd model.input
                 )
 
         OnTodoCreated r ->
             ( { model
-                | ongoingRequest = False
+                | ongoingRequest = Idle
                 , error = Nothing
                 , input = ""
                 , todos = List.append model.todos [ r.createTodo.changedTodo ]
@@ -124,7 +148,36 @@ update msg model =
 
         OnTodoCreationFailure err ->
             ( { model
-                | ongoingRequest = False
+                | ongoingRequest = Idle
+                , error = Just err
+              }
+            , Cmd.none
+            )
+
+        RequestToggle item ->
+            if model.ongoingRequest /= Idle then
+                ( model, Cmd.none )
+            else
+                ( { model | ongoingRequest = ItemAction item }
+                , createToggleCmd item
+                )
+
+        OnToggled result ->
+            let
+                { id, complete } =
+                    result.updateTodo.changedTodo
+            in
+                ( { model
+                    | todos = markOneTodo id complete model.todos
+                    , ongoingRequest = Idle
+                    , error = Nothing
+                  }
+                , Cmd.none
+                )
+
+        OnToggleFailure err ->
+            ( { model
+                | ongoingRequest = Idle
                 , error = Just err
               }
             , Cmd.none
@@ -136,6 +189,13 @@ createTodoCmd text =
     { text = text }
         |> addTodo
         |> Task.perform OnTodoCreationFailure OnTodoCreated
+
+
+createToggleCmd : TodoItem -> Cmd Msg
+createToggleCmd item =
+    { id = item.id, completed = not item.complete }
+        |> markTodo
+        |> Task.perform OnToggleFailure OnToggled
 
 
 
@@ -185,19 +245,49 @@ renderTodoList model =
     section [ class "todo-list" ]
         [ model.todos
             |> filterTodos model.filter
-            |> List.map renderTodoItem
+            |> List.map (renderTodoItem model.ongoingRequest)
             |> ul []
         ]
 
 
-renderTodoItem : TodoItem -> Html Msg
-renderTodoItem item =
-    li [ classList [ ( "todo-item", True ), ( "completed", item.complete ) ] ]
-        [ input [ type' "checkbox", class "check", checked item.complete ]
-            []
-        , label []
-            [ text item.text ]
+renderTodoItem : OngoingRequestReason -> TodoItem -> Html Msg
+renderTodoItem orr item =
+    let
+        spinnerVisible =
+            case orr of
+                ItemAction { id } ->
+                    id == item.id
+
+                _ ->
+                    False
+    in
+        li
+            [ classList [ ( "todo-item", True ), ( "completed", item.complete ) ] ]
+            [ spinner [ ( "hidden", not spinnerVisible ) ]
+            , input
+                [ type' "checkbox"
+                , classList [ ( "check", True ), ( "hidden", spinnerVisible ) ]
+                , checked item.complete
+                , onCheck <| \_ -> RequestToggle item
+                ]
+                []
+            , label []
+                [ text item.text ]
+            ]
+
+
+spinner : List ( String, Bool ) -> Html Msg
+spinner extraClasses =
+    i
+        [ classList <|
+            List.append
+                [ ( "fa", True )
+                , ( "fa-spinner", True )
+                , ( "fa-spin", True )
+                ]
+                extraClasses
         ]
+        []
 
 
 renderFooter : Model -> Html Msg

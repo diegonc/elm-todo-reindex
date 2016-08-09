@@ -3,7 +3,7 @@
 -}
 
 
-module GraphQL.TodoMVC exposing (allTodos, AllTodosResult, addTodo, AddTodoResult, ReindexGranteeType, ReindexOrder, ReindexTriggerType, ReindexLogEventType, ReindexLogLevel, ReindexProviderType)
+module GraphQL.TodoMVC exposing (allTodos, AllTodosResult, addTodo, AddTodoResult, markTodo, MarkTodoResult, ReindexGranteeType, ReindexOrder, ReindexTriggerType, ReindexLogEventType, ReindexLogLevel, ReindexProviderType)
 
 import Task exposing (Task)
 import Json.Decode exposing (..)
@@ -135,6 +135,52 @@ addTodoResult : Decoder AddTodoResult
 addTodoResult =
     map AddTodoResult
         ("createTodo"
+            := (map (\changedTodo -> { changedTodo = changedTodo })
+                    ("changedTodo"
+                        := (map (\id text complete -> { id = id, text = text, complete = complete }) ("id" := string)
+                                `apply` ("text" := string)
+                                `apply` ("complete" := bool)
+                           )
+                    )
+               )
+        )
+
+
+type alias MarkTodoResult =
+    { updateTodo :
+        { changedTodo :
+            { id : String
+            , text : String
+            , complete : Bool
+            }
+        }
+    }
+
+
+markTodo :
+    { id : String
+    , completed : Bool
+    }
+    -> Task Http.Error MarkTodoResult
+markTodo params =
+    let
+        graphQLQuery =
+            """mutation MarkTodo($id: ID!, $completed: Boolean!) { updateTodo(input: {id: $id, complete: $completed}) { changedTodo { id text complete } } }"""
+    in
+        let
+            graphQLParams =
+                Json.Encode.object
+                    [ ( "id", Json.Encode.string params.id )
+                    , ( "completed", Json.Encode.bool params.completed )
+                    ]
+        in
+            GraphQL.mutation endpointUrl graphQLQuery "MarkTodo" graphQLParams markTodoResult
+
+
+markTodoResult : Decoder MarkTodoResult
+markTodoResult =
+    map MarkTodoResult
+        ("updateTodo"
             := (map (\changedTodo -> { changedTodo = changedTodo })
                     ("changedTodo"
                         := (map (\id text complete -> { id = id, text = text, complete = complete }) ("id" := string)

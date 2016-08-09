@@ -19,3 +19,13 @@ mutation AddTodo($text: String!) {
     }
   }
 }
+
+mutation MarkTodo($id: ID!, $completed: Boolean!) {
+  updateTodo(input: {id: $id, complete: $completed}) {
+    changedTodo {
+      id
+      text
+      complete
+    }
+  }
+}
