@@ -47,6 +47,7 @@ type alias Model =
     , filter : Filter
     , input : String
     , ongoingRequest : OngoingRequestReason
+    , massToggleChecked : Maybe Bool
     }
 
 
@@ -57,7 +58,7 @@ initialFetch =
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model [] Nothing All "" InitialFetch, initialFetch )
+    ( Model [] Nothing All "" InitialFetch Nothing, initialFetch )
 
 
 filterTodos : Filter -> List TodoItem -> List TodoItem
@@ -100,24 +101,33 @@ type Msg
     | RequestToggle TodoItem
     | OnToggled MarkTodoResult
     | OnToggleFailure Http.Error
+    | RequestToggleAll
+    | OnToggledAll (List MarkTodoResult)
+    | OnToggleAllFailure Http.Error
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         InitialFetchResult r ->
-            ( { model
-                | error = Nothing
-                , todos = r.viewer.allTodos.nodes
-                , ongoingRequest = Idle
-              }
-            , Cmd.none
-            )
+            let
+                todos =
+                    r.viewer.allTodos.nodes
+            in
+                ( { model
+                    | error = Nothing
+                    , todos = todos
+                    , ongoingRequest = Idle
+                    , massToggleChecked = Just <| List.all .complete todos
+                  }
+                , Cmd.none
+                )
 
         InitialFetchError e ->
             ( { model
                 | error = Just e
                 , ongoingRequest = Idle
+                , massToggleChecked = Nothing
               }
             , Cmd.none
             )
@@ -142,6 +152,7 @@ update msg model =
                 , error = Nothing
                 , input = ""
                 , todos = List.append model.todos [ r.createTodo.changedTodo ]
+                , massToggleChecked = Just False
               }
             , Cmd.none
             )
@@ -166,11 +177,15 @@ update msg model =
             let
                 { id, complete } =
                     result.updateTodo.changedTodo
+
+                todos =
+                    markOneTodo id complete model.todos
             in
                 ( { model
-                    | todos = markOneTodo id complete model.todos
+                    | todos = todos
                     , ongoingRequest = Idle
                     , error = Nothing
+                    , massToggleChecked = Just <| List.all .complete todos
                   }
                 , Cmd.none
                 )
@@ -182,6 +197,50 @@ update msg model =
               }
             , Cmd.none
             )
+
+        RequestToggleAll ->
+            if model.ongoingRequest /= Idle then
+                ( model, Cmd.none )
+            else
+                let
+                    ( newMassToggleChecked, cmd ) =
+                        createToggleAllCmd model.todos
+                in
+                    ( { model
+                        | ongoingRequest = AppAction
+                        , massToggleChecked = Just newMassToggleChecked
+                      }
+                    , cmd
+                    )
+
+        OnToggledAll rs ->
+            ( { model
+                | ongoingRequest = Idle
+                , todos = applyToggleAllResults rs model.todos
+              }
+            , Cmd.none
+            )
+
+        OnToggleAllFailure err ->
+            ( { model
+                | ongoingRequest = Idle
+                , error = Just err
+              }
+            , Cmd.none
+            )
+
+
+applyToggleAllResults : List MarkTodoResult -> List TodoItem -> List TodoItem
+applyToggleAllResults rs todos =
+    let
+        handleResult result todos =
+            let
+                item =
+                    result.updateTodo.changedTodo
+            in
+                markOneTodo item.id item.complete todos
+    in
+        List.foldl handleResult todos rs
 
 
 createTodoCmd : String -> Cmd Msg
@@ -196,6 +255,27 @@ createToggleCmd item =
     { id = item.id, completed = not item.complete }
         |> markTodo
         |> Task.perform OnToggleFailure OnToggled
+
+
+createToggleAllCmd : List TodoItem -> ( Bool, Cmd Msg )
+createToggleAllCmd todos =
+    let
+        hasCompleted =
+            List.any .complete todos
+
+        hasActive =
+            List.any (.complete >> not) todos
+
+        newCompleted =
+            hasActive
+    in
+        ( newCompleted
+        , todos
+            |> List.map (\item -> { id = item.id, completed = newCompleted })
+            |> List.map markTodo
+            |> Task.sequence
+            |> Task.perform OnToggleAllFailure OnToggledAll
+        )
 
 
 
@@ -224,20 +304,35 @@ renderHeader =
 
 renderInputSection : Model -> Html Msg
 renderInputSection model =
-    section [ class "input" ]
-        [ Html.form
-            [ onSubmit RequestTodoCreation ]
-            [ input [ type' "checkbox", class "check" ] []
-            , input
-                [ type' "text"
-                , class "text"
-                , placeholder "What needs to be done?"
-                , value model.input
-                , onInput Input
+    let
+        spinnerVisible =
+            model.ongoingRequest
+                == InitialFetch
+                || model.ongoingRequest
+                == AppAction
+    in
+        section [ class "input" ]
+            [ Html.form
+                [ onSubmit RequestTodoCreation ]
+                [ input
+                    [ type' "checkbox"
+                    , classList [ ( "check", True ), ( "hidden", spinnerVisible ) ]
+                    , checked <| Maybe.withDefault False model.massToggleChecked
+                    , onCheck <| always RequestToggleAll
+                    , disabled <| model.massToggleChecked == Nothing
+                    ]
+                    []
+                , spinner [ ( "hidden", not spinnerVisible ) ]
+                , input
+                    [ type' "text"
+                    , class "text"
+                    , placeholder "What needs to be done?"
+                    , value model.input
+                    , onInput Input
+                    ]
+                    []
                 ]
-                []
             ]
-        ]
 
 
 renderTodoList : Model -> Html Msg

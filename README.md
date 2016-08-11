@@ -294,3 +294,17 @@ Three new messages will be created to implement this feature.
 Whenever a user changes the state of the check boxes a
 `RequestToggle` messages is delivered, which initiates a roundtrip to the
 server, and the UI is disabled until either the result or error comes back.
+
+## 12. Marking "all" todos as completed/active
+
+Using the mutation of section `11` we can implement mass toggling of todo
+items by resorting to `Task.sequence`. This function will construct a new task
+from a list of several tasks that when performed it will produce a list of the
+results of those input tasks.
+
+Again, three new messages will be created to implement this feature.
+
+* RequestToggleAll: to decide what kind of update shall be done and
+                    initiate the GraphQL mutations
+* OnToggledAll [MarkTodoResult]: to receive the result of all mutations
+* OnToggleAllFailure Http.Error: for handling server errors
