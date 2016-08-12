@@ -15,6 +15,8 @@ import GraphQL.TodoMVC
         , AddTodoResult
         , markTodo
         , MarkTodoResult
+        , deleteTodo
+        , DeleteTodoResult
         )
 
 
@@ -104,6 +106,9 @@ type Msg
     | RequestToggleAll
     | OnToggledAll (List MarkTodoResult)
     | OnToggleAllFailure Http.Error
+    | RequestClearCompleted
+    | OnClearedCompleted (List DeleteTodoResult)
+    | OnClearCompletedFailure Http.Error
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -229,6 +234,33 @@ update msg model =
             , Cmd.none
             )
 
+        RequestClearCompleted ->
+            if model.ongoingRequest /= Idle then
+                ( model, Cmd.none )
+            else
+                ( { model
+                    | ongoingRequest = AppAction
+                  }
+                , createClearCompletedCmd model.todos
+                )
+
+        OnClearedCompleted rs ->
+            ( { model
+                | ongoingRequest = Idle
+                , error = Nothing
+                , todos = applyClearCompletedResults rs model.todos
+              }
+            , Cmd.none
+            )
+
+        OnClearCompletedFailure err ->
+            ( { model
+                | ongoingRequest = Idle
+                , error = Just err
+              }
+            , Cmd.none
+            )
+
 
 applyToggleAllResults : List MarkTodoResult -> List TodoItem -> List TodoItem
 applyToggleAllResults rs todos =
@@ -241,6 +273,16 @@ applyToggleAllResults rs todos =
                 markOneTodo item.id item.complete todos
     in
         List.foldl handleResult todos rs
+
+
+applyClearCompletedResults : List DeleteTodoResult -> List TodoItem -> List TodoItem
+applyClearCompletedResults rs todos =
+    let
+        removed =
+            List.map (.deleteTodo >> .changedTodo >> .id) rs
+    in
+        todos
+            |> List.filter (.id >> (flip List.member) removed >> not)
 
 
 createTodoCmd : String -> Cmd Msg
@@ -276,6 +318,16 @@ createToggleAllCmd todos =
             |> Task.sequence
             |> Task.perform OnToggleAllFailure OnToggledAll
         )
+
+
+createClearCompletedCmd : List TodoItem -> Cmd Msg
+createClearCompletedCmd todos =
+    todos
+        |> List.filter .complete
+        |> List.map (\item -> { id = item.id })
+        |> List.map deleteTodo
+        |> Task.sequence
+        |> Task.perform OnClearCompletedFailure OnClearedCompleted
 
 
 
@@ -438,7 +490,12 @@ renderClearCompleted visible =
         [ class "clear-completed"
         , hidden (not visible)
         ]
-        [ button [ type' "button" ] [ text "Clear completed" ] ]
+        [ button
+            [ type' "button"
+            , onClick RequestClearCompleted
+            ]
+            [ text "Clear completed" ]
+        ]
 
 
 

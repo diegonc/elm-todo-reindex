@@ -308,3 +308,29 @@ Again, three new messages will be created to implement this feature.
                     initiate the GraphQL mutations
 * OnToggledAll [MarkTodoResult]: to receive the result of all mutations
 * OnToggleAllFailure Http.Error: for handling server errors
+
+## 13. Clearing completed todos
+
+Reindex created a `deleteTodo` mutation when the schema was uploaded in
+step `3`. Once again, the feature implemented in this section is a mass
+deletion of completed todos that must be implemented in terms of a mutation
+affecting only one todo item using `Task.sequence`.
+
+But first, the following mutation needs to be added to the queries file and
+the code generation tool has to be run.
+
+```
+mutation DeleteTodo($id: ID!) {
+  deleteTodo(input: {id: $id}) {
+    changedTodo {
+      id
+    }
+  }
+}
+```
+
+Three new messages will be created to implement this feature.
+
+* RequestClearCompleted: to initiate the GraphQL mutations
+* OnClearedCompleted [MarkTodoResult]: to receive the result of all mutations
+* OnClearCompletedFailure Http.Error: for handling server errors

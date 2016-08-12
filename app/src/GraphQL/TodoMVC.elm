@@ -3,7 +3,7 @@
 -}
 
 
-module GraphQL.TodoMVC exposing (allTodos, AllTodosResult, addTodo, AddTodoResult, markTodo, MarkTodoResult, ReindexGranteeType, ReindexOrder, ReindexTriggerType, ReindexLogEventType, ReindexLogLevel, ReindexProviderType)
+module GraphQL.TodoMVC exposing (allTodos, AllTodosResult, addTodo, AddTodoResult, markTodo, MarkTodoResult, deleteTodo, DeleteTodoResult, ReindexGranteeType, ReindexOrder, ReindexTriggerType, ReindexLogEventType, ReindexLogLevel, ReindexProviderType)
 
 import Task exposing (Task)
 import Json.Decode exposing (..)
@@ -187,6 +187,45 @@ markTodoResult =
                                 `apply` ("text" := string)
                                 `apply` ("complete" := bool)
                            )
+                    )
+               )
+        )
+
+
+type alias DeleteTodoResult =
+    { deleteTodo :
+        { changedTodo :
+            { id : String
+            }
+        }
+    }
+
+
+deleteTodo :
+    { id : String
+    }
+    -> Task Http.Error DeleteTodoResult
+deleteTodo params =
+    let
+        graphQLQuery =
+            """mutation DeleteTodo($id: ID!) { deleteTodo(input: {id: $id}) { changedTodo { id } } }"""
+    in
+        let
+            graphQLParams =
+                Json.Encode.object
+                    [ ( "id", Json.Encode.string params.id )
+                    ]
+        in
+            GraphQL.mutation endpointUrl graphQLQuery "DeleteTodo" graphQLParams deleteTodoResult
+
+
+deleteTodoResult : Decoder DeleteTodoResult
+deleteTodoResult =
+    map DeleteTodoResult
+        ("deleteTodo"
+            := (map (\changedTodo -> { changedTodo = changedTodo })
+                    ("changedTodo"
+                        := (map (\id -> { id = id }) ("id" := string))
                     )
                )
         )

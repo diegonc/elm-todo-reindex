@@ -29,3 +29,11 @@ mutation MarkTodo($id: ID!, $completed: Boolean!) {
     }
   }
 }
+
+mutation DeleteTodo($id: ID!) {
+  deleteTodo(input: {id: $id}) {
+    changedTodo {
+      id
+    }
+  }
+}
