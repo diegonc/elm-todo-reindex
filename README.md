@@ -334,3 +334,14 @@ Three new messages will be created to implement this feature.
 * RequestClearCompleted: to initiate the GraphQL mutations
 * OnClearedCompleted [MarkTodoResult]: to receive the result of all mutations
 * OnClearCompletedFailure Http.Error: for handling server errors
+
+## Future work
+
+* Poll the server to get new items created by other users
+* Implement optimistic updates
+* Investigate authentication
+* Use keyed HTML nodes for todo items
+* Reindex.io implements Relay's Connection pattern, investigate how our
+naive AddTodo mutation breaks it.
+* Modularize
+* Test
